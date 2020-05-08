@@ -1,0 +1,26 @@
+{
+  "weather": {
+    "url": "https://api.openweathermap.org/data/2.5/onecall",
+    "params": {
+      "appid": "",
+      "lat": "45.123456",
+      "lon": "-93.123456",
+      "units": "imperial"
+    }
+  },
+  "news": {
+    "url": "https://newsapi.org/v2/top-headlines",
+    "apiKey": "",
+    "sources": "the-new-york-times,the-wall-street-journal,bbc-news,abc-news,al-jazeera-english"
+  },
+  "covid": {
+    "mn": "https://corona.lmao.ninja/v2/states/minnesota",
+    "us": "https://corona.lmao.ninja/v2/countries/usa",
+    "world": "https://corona.lmao.ninja/v2/all"
+  },
+  "calendar": {
+    "dates": [
+      {"month": 7, "day": 4}
+    ]
+  }
+}
