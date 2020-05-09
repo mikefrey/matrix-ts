@@ -22,7 +22,7 @@ class Matrix {
 	constructor() {
 		const width = 64
 		const height = 8
-		const brightness = 60 // 0 - 255
+		const brightness = 128 // 0 - 255
 
 		this.surface = new Surface(width, height, brightness)
 		this.buffer = new FrameBuffer(width, height)

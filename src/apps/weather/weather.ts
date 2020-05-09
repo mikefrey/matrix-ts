@@ -1,10 +1,63 @@
 import * as Query from 'querystring'
+import * as Path from 'path'
 import fetch from 'node-fetch'
 
 import {FrameBuffer} from '../../framebuffer'
 import {Font8} from '../../fonts/font8'
 import {App, Job} from '../../app'
-import {Drawable, Text} from '../../drawable'
+import {Drawable, Text, Img} from '../../drawable'
+import {Gif} from '../../gif'
+
+interface WeatherData {
+	current: CurrentConditions
+	daily: DailyForecast[]
+}
+
+interface CurrentConditions {
+	temp: number
+	high: number
+	low: number
+	icon: WeatherIcon
+}
+
+interface DailyForecast {
+	sunrise: number
+	sunset: number
+	high: number
+	low: number
+	icon: WeatherIcon
+}
+
+enum WeatherIcon {
+	clearDay = 'clear-day',
+	clearNight = 'clear-night',
+	cloudy = 'cloudy',
+	fog = 'fog',
+	partlyCloudyDay = 'partly-cloudy-day',
+	partlyCloudyNight = 'partly-cloudy-night',
+	rain = 'rain',
+	sleet = 'sleet',
+	snow = 'snow',
+	wind = 'wind',
+}
+
+function createImg(key: WeatherIcon) {
+	const path = Path.join(__dirname, `../../../icons/weather-${key}.gif`)
+	return new Img(new Gif(path), 0, 0)
+}
+
+const icons: {[key in WeatherIcon]: Img} = {
+	[WeatherIcon.clearDay]: createImg(WeatherIcon.clearDay),
+	[WeatherIcon.clearNight]: createImg(WeatherIcon.clearNight),
+	[WeatherIcon.cloudy]: createImg(WeatherIcon.cloudy),
+	[WeatherIcon.fog]: createImg(WeatherIcon.fog),
+	[WeatherIcon.partlyCloudyDay]: createImg(WeatherIcon.partlyCloudyDay),
+	[WeatherIcon.partlyCloudyNight]: createImg(WeatherIcon.partlyCloudyNight),
+	[WeatherIcon.rain]: createImg(WeatherIcon.rain),
+	[WeatherIcon.sleet]: createImg(WeatherIcon.sleet),
+	[WeatherIcon.snow]: createImg(WeatherIcon.snow),
+	[WeatherIcon.wind]: createImg(WeatherIcon.wind),
+}
 
 export class Weather extends App {
 	items: {[key: string]: Drawable}
@@ -12,12 +65,13 @@ export class Weather extends App {
 	constructor() {
 		super()
 
-		const currentX = Font8.measure('100°F') + 9
-		const highX = Font8.measure(' 100°') + currentX
-		const lowX = Font8.measure(' 00°') + highX
+		const currentX = Font8.measure('100°') + 9
+		const highX = Font8.measure('100°') + currentX + 2
+		const lowX = Font8.measure('00°') + highX + 1
 
-		const items = {
-			current: new Text(Font8, '0°F', currentX, 0, 0xFFFFFF, 'right'),
+		const items: {[key: string]: Drawable} = {
+			icon: icons[WeatherIcon.clearDay],
+			current: new Text(Font8, '0°', currentX, 0, 0xFFFFFF, 'right'),
 			high: new Text(Font8, '0°', highX, 0, 0xFF5555, 'right'),
 			low: new Text(Font8, '0°', lowX, 0, 0x5555FF, 'right')
 		}
@@ -28,14 +82,17 @@ export class Weather extends App {
 	update(ts: number, data: WeatherData) {
 		if (!data) return
 
+		this.items.icon = icons[data.current.icon]
+		this.items.icon.update(ts)
+
 		const current = (<Text>this.items.current)
-		current.msg = `${data.current.temp}°F`
+		current.msg = `${data.current.temp}°`
 
 		const high = (<Text>this.items.high)
-		high.msg = `${data.current.high}°F`
+		high.msg = `${data.current.high}°`
 
 		const low = (<Text>this.items.low)
-		low.msg = `${data.current.temp}°F`
+		low.msg = `${data.current.low}°`
 	}
 
 	draw(buf: FrameBuffer) {
@@ -44,26 +101,26 @@ export class Weather extends App {
 }
 
 
-const iconMap: {[key:string]: WeatherIcon}= {
-	'511': 'sleet',
-	'611': 'sleet',
-	'612': 'sleet',
-	'613': 'sleet',
+const iconMap: {[key:string]: WeatherIcon} = {
+	'511': WeatherIcon.sleet,
+	'611': WeatherIcon.sleet,
+	'612': WeatherIcon.sleet,
+	'613': WeatherIcon.sleet,
 
-	'01d': 'clear-day',
-	'01n': 'clear-night',
-	'02d': 'partly-cloudy-day',
-	'02n': 'partly-cloudy-night',
-	'03d': 'partly-cloudy-day',
-	'03n': 'partly-cloudy-night',
-	'04d': 'cloudy',
-	'04n': 'cloudy',
-	'09d': 'rain',
-	'10d': 'rain',
-	'11d': 'rain',
-	'13d': 'snow',
-	'50d': 'fog',
-	// '': 'wind',
+	'01d': WeatherIcon.clearDay,
+	'01n': WeatherIcon.clearNight,
+	'02d': WeatherIcon.partlyCloudyDay,
+	'02n': WeatherIcon.partlyCloudyNight,
+	'03d': WeatherIcon.partlyCloudyDay,
+	'03n': WeatherIcon.partlyCloudyNight,
+	'04d': WeatherIcon.cloudy,
+	'04n': WeatherIcon.cloudy,
+	'09d': WeatherIcon.rain,
+	'10d': WeatherIcon.rain,
+	'11d': WeatherIcon.rain,
+	'13d': WeatherIcon.snow,
+	'50d': WeatherIcon.fog,
+	// '': WeatherIcon.wind,
 }
 
 function getIcon(codes: OWConditionCodes, windSpeed: number): WeatherIcon {
@@ -71,7 +128,7 @@ function getIcon(codes: OWConditionCodes, windSpeed: number): WeatherIcon {
 	if (!icon) {
 		icon = iconMap[codes.icon]
 		if (windSpeed >= 25 && ['01d','01n','02d','02n','03d','03n','04d','04n'].includes(codes.icon)) {
-			icon = 'wind'
+			icon = WeatherIcon.wind
 		}
 	}
 	return icon
@@ -107,7 +164,7 @@ export class WeatherJob extends Job {
 				currentIcon = iconMap[body.current.weather[0].id+'']
 			}
 
-			console.log(body.current.temp)
+			console.log(body.current.temp, currentIcon)
 
 			return {
 				current: {
